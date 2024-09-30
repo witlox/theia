@@ -11,6 +11,14 @@ config = "0.13"
 home = "0.5"
 clap = "4.4"
 dirs = "5.0"
+redis = "0.27.2"
+serde_json = "1.0.111"
+tokio = "1.40.0"
+chrono = "0.4.38"
+
+[dev-dependencies]
+pretty_assertions = "1.4.1"
+testcontainers = "0.23.1"
 
 [lib]
 name = "libtheia"
