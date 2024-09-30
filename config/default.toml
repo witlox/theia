@@ -1,7 +1,2 @@
 [log]
 level = "info"
-
-[identity]
-expiration = "1 day"
-maximum_usage = 3
-
