@@ -8,6 +8,8 @@ extern crate lazy_static;
 mod settings;
 use settings::Settings;
 
+pub mod CRDT;
+
 pub mod models;
 use models::dc::DataCentre;
 
