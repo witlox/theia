@@ -7,6 +7,7 @@ edition = "2021"
 [dependencies]
 lazy_static = "1.4"
 serde = { version = "1.0", features = ["derive"] }
+num = {version = "0.4", features = ["serde"], optional = true}
 config = "0.13"
 home = "0.5"
 clap = "4.4"

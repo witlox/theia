@@ -6,8 +6,8 @@ use std::hash::Hash;
 use std::mem;
 
 use serde::{Deserialize, Serialize};
-use crate::CRDT::base::{Add, Read, Remove};
-use crate::CRDT::{CmRDT, CvRDT, ResetRemove, VectorClock, Version, VersionRange};
+use crate::crdt::base::{Add, Read, Remove};
+use crate::crdt::{CmRDT, CvRDT, ResetRemove, VectorClock, Version, VersionRange};
 
 pub trait Val<A: Ord>: Clone + Default + ResetRemove<A> + CmRDT {}
 
@@ -259,7 +259,7 @@ impl<K: Ord, V: Val<A>, A: Ord + Hash + Clone> Map<K, V, A> {
         }
     }
 
-    pub fn length(&self) -> Read<usize, A> {
+    pub fn len(&self) -> Read<usize, A> {
         Read {
             add_clock: self.clock.clone(),
             rm_clock: self.clock.clone(),
@@ -282,13 +282,13 @@ impl<K: Ord, V: Val<A>, A: Ord + Hash + Clone> Map<K, V, A> {
     pub fn update<F>(&self, key: impl Into<K>, a: Add<A>, f: F) -> Operation<K, V, A> where F: FnOnce(&V, Add<A>) -> V::Operation
     {
         let key = key.into();
-        let dot = a.version.clone();
-        let op = match self.entries.get(&key).map(|e| &e.value) {
+        let version = a.version.clone();
+        let operation = match self.entries.get(&key).map(|e| &e.value) {
             Some(data) => f(data, a),
             None => f(&V::default(), a),
         };
 
-        Operation::Update { version: dot, key, operation: op }
+        Operation::Update { version, key, operation }
     }
 
     pub fn remove(&self, key: impl Into<K>, r: Remove<A>) -> Operation<K, V, A> {
@@ -355,8 +355,8 @@ impl<K: Ord, V: Val<A>, A: Ord + Hash + Clone> Map<K, V, A> {
     /// Gets an iterator over the entries of the `Map`.
     ///
     /// ```rust
-    /// use libtheia::CRDT::{ CmRDT, Map };
-    /// use libtheia::CRDT::multi_value::MultiValue;
+    /// use libtheia::crdt::{ CmRDT, Map };
+    /// use libtheia::crdt::multi_value::MultiValue;
     ///
     /// type Actor = &'static str;
     /// type Key = &'static str;

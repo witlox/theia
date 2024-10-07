@@ -1,6 +1,7 @@
 use serde::{Serialize, Deserialize};
+use crate::crdt::{List, CmRDT};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[allow(unused)]
 pub enum GPUBusType {
     PCIe,
@@ -12,7 +13,7 @@ pub enum GPUBusType {
 ///
 /// GPU data structure
 ///
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[allow(unused)]
 pub struct GPU {
     pub name: String,
@@ -42,7 +43,7 @@ impl GPU {
 ///
 /// Network connections
 ///
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[allow(unused)]
 pub struct InterConnect {
     pub name: String,
@@ -78,7 +79,7 @@ impl InterConnect {
 ///
 /// Disk Types
 ///
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[allow(unused)]
 pub enum DiskType {
     Spinning,
@@ -100,7 +101,7 @@ impl DiskType {
 ///
 /// Disks
 ///
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[allow(unused)]
 pub struct Disk {
     pub name: String,
@@ -135,7 +136,7 @@ impl Disk {
 ///
 /// Main data structure for storing and retrieving compute resources
 ///
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[allow(unused)]
 pub struct Compute {
     pub name: String,
@@ -182,7 +183,7 @@ impl Compute {
 ///
 /// Storage, where capacity is either given, or the sum of all disks
 ///
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[allow(unused)]
 pub struct Storage {
     pub name: String,
@@ -217,9 +218,9 @@ impl Storage {
 #[allow(unused)]
 pub struct DataCentre {
     pub name: String,
-    pub compute: Vec<Compute>,
-    pub storage: Vec<Storage>,
-    pub interconnects: Vec<InterConnect>,
+    pub compute: List<Compute, str>,
+    pub storage: List<Storage, str>,
+    pub interconnects: List<InterConnect, str>,
 }
 
 impl DataCentre {
@@ -229,58 +230,59 @@ impl DataCentre {
     pub fn new(n: String) -> DataCentre {
         DataCentre{
             name: n,
-            compute: Vec::new(),
-            storage: Vec::new(),
-            interconnects: Vec::new(),
+            compute: List::new(),
+            storage: List::new(),
+            interconnects: List::new(),
         }
     }
 
     pub fn add_compute(&mut self, c: Compute) {
-        self.compute.push(c);
+        let r = c.name.clone();
+        self.compute.apply(self.compute.append(c, **r.as_str()));
     }
 
     pub fn add_storage(&mut self, s: Storage) {
-        self.storage.push(s);
+        let r = s.name.clone();
+        self.storage.apply(self.storage.append(s, **r.as_str()));
     }
 
     pub fn add_interconnect(&mut self, i: InterConnect) {
-        self.interconnects.push(i);
+        let r = i.name.clone();
+        self.interconnects.apply(self.interconnects.append(i, **r.as_str()));
     }
 
     pub(crate) fn get_compute(&self, name: &str) -> Option<&Compute> {
-        for c in &self.compute {
-            if c.name == name {
-                return Some(c);
-            }
+        let compute = self.compute.pos(name);
+        let compute = self.compute.get(name);
+        if compute.value.is_none() {
+            return None;
         }
-        None
+        Some(&compute.value.unwrap())
     }
 
     pub(crate) fn get_storage(&self, name: &str) -> Option<&Storage> {
-        for s in &self.storage {
-            if s.name == name {
-                return Some(s);
-            }
+        let storage = self.storage.get(name);
+        if storage.value.is_none() {
+            return None;
         }
-        None
+        Some(&storage.value.unwrap())
     }
 
     pub(crate) fn get_interconnect(&self, name: &str) -> Option<&InterConnect> {
-        for i in &self.interconnects {
-            if i.name == name {
-                return Some(i);
-            }
+        let interconnect = self.interconnects.get(name);
+        if interconnect.value.is_none() {
+            return None;
         }
-        None
+        Some(&interconnect.value.unwrap())
     }
 
     pub(crate) fn update_compute(&mut self, c: Compute) {
-        for i in 0..self.compute.len() {
-            if self.compute[i].name == c.name {
-                self.compute[i] = c;
-                return;
-            }
-        }
+        let compute = self.compute.get(&c.name);
+            self.compute.get(&c.name).derive_add(c);
+
+        self.compute.apply(self.compute.update(&c.name, c, |map, x| {
+            map.update(2, x, |mv, x| mv.write(2, x))
+        }));
     }
 
     pub(crate) fn update_storage(&mut self, s: Storage) {

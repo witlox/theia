@@ -1,12 +1,12 @@
-use libtheia::CRDT::{ CmRDT, CvRDT, Map, Version};
-use libtheia::CRDT::map::Operation as MapOperation;
-use libtheia::CRDT::multi_value::Operation as MultiValueOperation;
-use libtheia::CRDT::multi_value::MultiValue;
+use libtheia::crdt::{CmRDT, CvRDT, Map, Version};
+use libtheia::crdt::map::Operation as MapOperation;
+use libtheia::crdt::multi_value::Operation as MultiValueOperation;
+use libtheia::crdt::multi_value::MultiValue;
 
 #[test]
 fn test_new() {
     let m: Map<u8, MultiValue<u8, _>, u8> = Map::new();
-    assert_eq!(m.length().value, 0);
+    assert_eq!(m.len().value, 0);
     assert!(m.is_empty().value);
 }
 
@@ -82,22 +82,22 @@ fn test_update() {
 fn test_remove() {
     let mut m: Map<u8, Map<u8, MultiValue<u8, u8>, u8>, u8> = Map::new();
 
-    let add_a = m.length().derive_add(1);
+    let add_a = m.len().derive_add(1);
     let mut inner_map: Map<u8, MultiValue<u8, u8>, u8> = Map::new();
     inner_map.apply(inner_map.update(1, add_a, |mv, x| mv.write(0, x)));
 
-    let add_a = m.length().derive_add(1);
+    let add_a = m.len().derive_add(1);
     m.apply(m.update(2, add_a, |map, x| {
         map.update(1, x, |mv, x| mv.write(0, x))
     }));
 
     assert_eq!(m.get(&2).value, Some(inner_map));
-    assert_eq!(m.length().value, 1);
+    assert_eq!(m.len().value, 1);
 
     m.apply(m.remove(2, m.get(&2).derive_remove()));
 
     assert_eq!(m.get(&2).value, None);
-    assert_eq!(m.length().value, 0);
+    assert_eq!(m.len().value, 0);
 }
 
 #[test]
@@ -125,5 +125,5 @@ fn test_reset_remove_semantics() {
     let inner_map = m1.get(&1).value.unwrap();
     assert_eq!(inner_map.get(&3).value.map(|r| r.read().value), Some(vec![4]));
     assert_eq!(inner_map.get(&2).value, None);
-    assert_eq!(inner_map.length().value, 1);
+    assert_eq!(inner_map.len().value, 1);
 }

@@ -1,9 +1,9 @@
 //! Module containing Vector Clock implementation.
 //!
 //! ``` rust
-//! use libtheia::CRDT::CmRDT;
-//! use libtheia::CRDT::VectorClock;
-//! use libtheia::CRDT::Version;
+//! use libtheia::crdt::CmRDT;
+//! use libtheia::crdt::VectorClock;
+//! use libtheia::crdt::Version;
 //!
 //! let mut a = VectorClock::new();
 //! let mut b = VectorClock::new();
@@ -19,7 +19,7 @@ use core::mem;
 use std::collections::{btree_map, BTreeMap};
 
 use serde::{Deserialize, Serialize};
-use crate::CRDT::{ Version, VersionRange, CmRDT, CvRDT, ResetRemove };
+use crate::crdt::{Version, VersionRange, CmRDT, CvRDT, ResetRemove };
 
 /// It contains a set of "actors" and associated counters.
 /// When a particular actor witnesses a mutation, their associated
@@ -94,9 +94,9 @@ impl<A: Ord + Clone + Debug> CmRDT for VectorClock<A> {
     /// Monotonically adds the given actor version to this Vector Clock.
     ///
     /// ``` rust
-    /// use libtheia::CRDT::CmRDT;
-    /// use libtheia::CRDT::VectorClock;
-    /// use libtheia::CRDT::Version;
+    /// use libtheia::crdt::CmRDT;
+    /// use libtheia::crdt::VectorClock;
+    /// use libtheia::crdt::Version;
     ///
     /// let mut v = VectorClock::new();
     ///
@@ -142,8 +142,8 @@ impl<A: Ord> VectorClock<A> {
     /// Generate Operation to increment an actor's counter.
     ///
     /// ``` rust
-    /// use libtheia::CRDT::CmRDT;
-    /// use libtheia::CRDT::VectorClock;
+    /// use libtheia::crdt::CmRDT;
+    /// use libtheia::crdt::VectorClock;
     ///
     /// let mut a = VectorClock::new();
     ///
@@ -178,8 +178,8 @@ impl<A: Ord> VectorClock<A> {
     /// True if two vector clocks have diverged.
     ///
     /// ``` rust
-    /// use libtheia::CRDT::CmRDT;
-    /// use libtheia::CRDT::VectorClock;
+    /// use libtheia::crdt::CmRDT;
+    /// use libtheia::crdt::VectorClock;
     ///
     /// let (mut a, mut b) = (VectorClock::new(), VectorClock::new());
     /// a.apply(a.increment("A"));
@@ -208,9 +208,9 @@ impl<A: Ord> VectorClock<A> {
     /// Reduces this Vector Clock to the greatest-lower-bound
     ///
     /// ``` rust
-    /// use libtheia::CRDT::CmRDT;
-    /// use libtheia::CRDT::VectorClock;
-    /// use libtheia::CRDT::Version;
+    /// use libtheia::crdt::CmRDT;
+    /// use libtheia::crdt::VectorClock;
+    /// use libtheia::crdt::Version;
     ///
     /// let mut c = VectorClock::new();
     /// c.apply(Version::new(23, 6));

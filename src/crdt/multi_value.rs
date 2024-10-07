@@ -4,15 +4,15 @@ use core::fmt::{self, Debug, Display};
 use core::mem;
 
 use serde::{Deserialize, Serialize};
-use crate::CRDT::base::{Add, Read};
-use crate::CRDT::traits::{CmRDT, CvRDT, ResetRemove};
-use crate::CRDT::vector_clock::VectorClock;
+use crate::crdt::base::{Add, Read};
+use crate::crdt::traits::{CmRDT, CvRDT, ResetRemove};
+use crate::crdt::vector_clock::VectorClock;
 
 /// Multi-Value storage
 ///
 /// ``` rust
-/// use libtheia::CRDT::{ CmRDT, Version, VectorClock };
-/// use libtheia::CRDT::multi_value::MultiValue;
+/// use libtheia::crdt::{ CmRDT, Version, VectorClock };
+/// use libtheia::crdt::multi_value::MultiValue;
 ///
 /// let mut r1 = MultiValue::new();
 /// let mut r2 = r1.clone();
@@ -128,12 +128,12 @@ impl<V, A: Ord> CmRDT for MultiValue<V, A> {
     type Operation = Operation<V, A>;
     type Validation = Infallible;
 
-    fn validate_operation(&self, _op: &Self::Operation) -> Result<(), Self::Validation> {
+    fn validate_operation(&self, _operation: &Self::Operation) -> Result<(), Self::Validation> {
         Ok(())
     }
 
-    fn apply(&mut self, op: Self::Operation) {
-        match op {
+    fn apply(&mut self, operation: Self::Operation) {
+        match operation {
             Operation::Put { clock, value: val } => {
                 if clock.is_empty() {
                     return;
@@ -163,10 +163,10 @@ impl<V, A: Ord + Clone + Debug> MultiValue<V, A> {
         Default::default()
     }
 
-    pub fn write(&self, val: V, ctx: Add<A>) -> Operation<V, A> {
+    pub fn write(&self, value: V, a: Add<A>) -> Operation<V, A> {
         Operation::Put {
-            clock: ctx.clock,
-            value: val,
+            clock: a.clock,
+            value,
         }
     }
 

@@ -1,6 +1,6 @@
 use std::error::Error;
 use std::hash::Hash;
-use crate::CRDT::VectorClock;
+use crate::crdt::VectorClock;
 
 pub trait Actor: Ord + Clone + Hash {}
 impl<A: Ord + Clone + Hash> Actor for A {}

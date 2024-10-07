@@ -1,5 +1,5 @@
 use std::fmt::Debug;
-use libtheia::CRDT::{ ResetRemove, Version, CvRDT, CmRDT, VectorClock};
+use libtheia::crdt::{ResetRemove, Version, CvRDT, CmRDT, VectorClock};
 
 #[test]
 fn test_reset_remove() {

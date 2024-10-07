@@ -1,10 +1,10 @@
 use std::fmt::Debug;
 
 use serde::{Deserialize, Serialize};
-use crate::CRDT::vector_clock::VectorClock;
-use crate::CRDT::version::Version;
+use crate::crdt::vector_clock::VectorClock;
+use crate::crdt::version::Version;
 
-use crate::CRDT::traits::CmRDT;
+use crate::crdt::traits::CmRDT;
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Read<V, A: Ord> {
