@@ -19,7 +19,7 @@ pub trait CmRDT {
 
     type Validation: Error;
 
-    fn validate_operation(&self, op: &Self::Operation) -> Result<(), Self::Validation>;
+    fn validate(&self, op: &Self::Operation) -> Result<(), Self::Validation>;
 
     fn apply(&mut self, op: Self::Operation);
 }

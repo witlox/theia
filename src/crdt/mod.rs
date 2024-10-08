@@ -9,6 +9,7 @@ pub use traits::{Actor, CvRDT, CmRDT, ResetRemove};
 
 pub mod version;
 pub use version::{Version, VersionRange};
+
 mod serde_ext;
 
 pub mod map;
@@ -18,6 +19,6 @@ pub mod multi_value;
 mod list;
 pub use list::List;
 
-#[cfg(feature = "num")]
-pub mod identifier;
+mod identifier;
+pub use identifier::Identifier;
 

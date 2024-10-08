@@ -79,7 +79,7 @@ impl<A: Ord + Clone + Debug> CmRDT for VectorClock<A> {
     type Operation = Version<A>;
     type Validation = VersionRange<A>;
 
-    fn validate_operation(&self, version: &Self::Operation) -> Result<(), Self::Validation> {
+    fn validate(&self, version: &Self::Operation) -> Result<(), Self::Validation> {
         let next_counter = self.get(&version.actor) + 1;
         if version.counter > next_counter {
             Err(VersionRange {

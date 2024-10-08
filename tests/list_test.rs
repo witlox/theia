@@ -6,263 +6,259 @@ type SiteId = u32;
 
 #[test]
 fn test_new() {
-    let site1: List<char, SiteId> = List::new();
-    assert_eq!(site1.len(), 0);
-    assert!(site1.is_empty());
+    let lst: List<char, SiteId> = List::new();
+    assert_eq!(lst.len(), 0);
+    assert!(lst.is_empty());
 }
 
 #[test]
 fn test_is_empty() {
-    let mut site1 = List::new();
-    assert!(site1.is_empty());
+    let mut list = List::new();
+    assert!(list.is_empty());
 
-    let o = site1.insert_index(0, 'a', 'A');
-    site1.apply(o);
-    assert!(!site1.is_empty());
+    let o = list.insert_index(0, 0, 0);
+    list.apply(o);
+    assert!(!list.is_empty());
 }
 
 #[test]
 fn test_append() {
-    let mut site1 = List::new();
-    assert!(site1.is_empty());
+    let mut list = List::new();
+    assert!(list.is_empty());
 
-    let op = site1.append('a', 0);
-    site1.apply(op);
-    let op = site1.append('b', 0);
-    site1.apply(op);
-    let op = site1.append('c', 0);
-    site1.apply(op);
+    let op = list.append('a', 0);
+    list.apply(op);
+    let op = list.append('b', 0);
+    list.apply(op);
+    let op = list.append('c', 0);
+    list.apply(op);
 
-    assert_eq!(String::from_iter(site1), "abc");
+    assert_eq!(String::from_iter(list), "abc");
 }
 
 #[test]
 fn test_out_of_order_inserts() {
-    let mut site1 = List::new();
-    let mut site2 = List::new();
-    let op1 = site1.insert_index(0, 'a', 0);
-    site1.apply(op1.clone());
+    let mut list1 = List::new();
+    let mut list2 = List::new();
+    let o1 = list1.insert_index(0, 'a', 0);
+    list1.apply(o1.clone());
 
-    let op2 = site1.insert_index(1, 'c', 0);
-    site1.apply(op2.clone());
+    let o2 = list1.insert_index(1, 'c', 0);
+    list1.apply(o2.clone());
 
-    let op3 = site1.insert_index(1, 'b', 0);
-    site1.apply(op3.clone());
+    let o3 = list1.insert_index(1, 'b', 0);
+    list1.apply(o3.clone());
 
-    let mut ops = vec![op1, op2, op3];
+    let mut operations = vec![o1, o2, o3];
     let mut iterations = 0;
-    while let Some(op) = ops.pop() {
+    while let Some(op) = operations.pop() {
         assert!(iterations < (3 * (3 + 1)) / 2);
         iterations += 1;
-        if site2.validate_operation(&op).is_ok() {
-            site2.apply(op)
+        if list2.validate(&op).is_ok() {
+            list2.apply(op)
         } else {
-            ops.insert(0, op);
+            operations.insert(0, op);
         }
     }
 
-    let site1_items = String::from_iter(site1);
-    assert_eq!(site1_items, "abc");
-    assert_eq!(site1_items, String::from_iter(site2));
+    let list1_elems = String::from_iter(list1);
+    assert_eq!(list1_elems, "abc");
+    assert_eq!(list1_elems, String::from_iter(list2));
 }
 
 #[test]
-fn test_concurrent_inserts_with_same_identifier_can_be_split() {
-    let mut list_a = List::new();
-    let mut list_b = List::new();
-    let mut list_c = List::new();
+fn test_concurrent_inserts() {
+    let mut list1 = List::new();
+    let mut list2 = List::new();
+    let mut list3 = List::new();
 
-    let op_a = list_a.insert_index(0, 'a', 'A');
-    let op_b = list_b.insert_index(0, 'b', 'B');
+    let o1 = list1.insert_index(0, 'a', 'A');
+    let o2 = list2.insert_index(0, 'b', 'B');
 
-    list_a.apply(op_a.clone());
-    list_a.apply(op_b.clone());
-    list_b.apply(op_a.clone());
-    list_b.apply(op_b.clone());
-    list_c.apply(op_a);
-    list_c.apply(op_b);
+    list1.apply(o1.clone());
+    list1.apply(o2.clone());
+    list2.apply(o1.clone());
+    list2.apply(o2.clone());
+    list3.apply(o1);
+    list3.apply(o2);
 
-    assert_eq!(list_a.read::<String>(), "ab");
-    assert_eq!(list_b.read::<String>(), "ab");
-    assert_eq!(list_c.read::<String>(), "ab");
-    list_c.apply(list_c.insert_index(1, 'c', 'C'));
-    assert_eq!(list_c.read::<String>(), "acb");
+    assert_eq!(list1.read::<String>(), "ab");
+    assert_eq!(list2.read::<String>(), "ab");
+    assert_eq!(list3.read::<String>(), "ab");
+    list3.apply(list3.insert_index(1, 'c', 'C'));
+    assert_eq!(list3.read::<String>(), "acb");
 }
 
 #[test]
-fn test_append_mixed_with_inserts() {
-    let mut site1 = List::new();
-    let op = site1.append('a', 0);
-    site1.apply(op);
+fn test_append_and_inserts() {
+    let mut list = List::new();
+    let o1 = list.append('a', 0);
+    list.apply(o1);
 
-    let op = site1.insert_index(0, 'b', 0);
-    site1.apply(op);
+    let o2 = list.insert_index(0, 'b', 0);
+    list.apply(o2);
 
-    let op = site1.append('c', 0);
-    site1.apply(op);
+    let o3 = list.append('c', 0);
+    list.apply(o3);
 
-    let op = site1.insert_index(1, 'd', 0);
-    site1.apply(op);
+    let o4 = list.insert_index(1, 'd', 0);
+    list.apply(o4);
 
-    assert_eq!(String::from_iter(site1), "bdac");
+    assert_eq!(String::from_iter(list), "bdac");
 }
 
 #[test]
 fn test_delete_of_index() {
-    let mut site1 = List::new();
-    let op = site1.insert_index(0, 'a', 0);
-    site1.apply(op);
-    let op = site1.insert_index(1, 'b', 0);
-    site1.apply(op);
-    assert_eq!(String::from_iter(site1.iter()), "ab");
+    let mut list = List::new();
+    let o1 = list.insert_index(0, 'a', 0);
+    list.apply(o1);
+    let o2 = list.insert_index(1, 'b', 0);
+    list.apply(o2);
+    assert_eq!(String::from_iter(list.iter()), "ab");
 
-    let op = site1.delete_index(0, 0);
-    site1.apply(op.unwrap());
-    assert_eq!(String::from_iter(site1), "b");
+    let op = list.delete_index(0, 0);
+    list.apply(op.unwrap());
+    assert_eq!(String::from_iter(list), "b");
 }
 
 #[test]
 fn test_position() {
-    let mut site1 = List::new();
-    let op = site1.append('a', 0);
-    site1.apply(op);
-    let op = site1.append('b', 0);
-    site1.apply(op);
+    let mut list = List::new();
+    let op = list.append('a', 0);
+    list.apply(op);
+    let op = list.append('b', 0);
+    list.apply(op);
 
-    assert_eq!(site1.pos(0), Some(&'a'));
-    assert_eq!(site1.pos(1), Some(&'b'));
+    assert_eq!(list.pos(0), Some(&'a'));
+    assert_eq!(list.pos(1), Some(&'b'));
 }
 
 #[test]
 fn test_identifier_position() {
-    let mut site1 = List::new();
-    let op_a = site1.append('a', 0);
-    site1.apply(op_a.clone());
-    let op_b = site1.append('b', 0);
-    site1.apply(op_b.clone());
-    let op_c = site1.append('c', 0);
+    let mut list = List::new();
+    let o1 = list.append('a', 0);
+    list.apply(o1.clone());
+    let o2 = list.append('b', 0);
+    list.apply(o2.clone());
+    let o3 = list.append('c', 0);
 
-    assert_eq!(site1.pos_entry(op_a.id()), Some(0));
-    assert_eq!(site1.pos_entry(op_b.id()), Some(1));
-    assert_eq!(site1.pos_entry(op_c.id()), None);
+    assert_eq!(list.pos_entry(o1.id()), Some(0));
+    assert_eq!(list.pos_entry(o2.id()), Some(1));
+    assert_eq!(list.pos_entry(o3.id()), None);
 }
 
 #[test]
-fn test_reapply_list_ops() {
-    let mut rng = rand::thread_rng();
+fn test_reapply_list() {
+    let mut random = rand::thread_rng();
 
-    let s1 = rng.clone().sample_iter(Alphanumeric).map(char::from);
+    let s1 = random.clone().sample_iter(Alphanumeric).map(char::from);
 
-    let mut site1 = List::new();
-    let mut site2 = List::new();
+    let mut list1 = List::new();
+    let mut list2 = List::new();
 
     for c in s1.take(5000) {
-        let ix = rng.gen_range(0..site1.len() + 1);
-        let insert_op = site1.insert_index(ix, c, 0);
-        site1.apply(insert_op.clone());
+        let index = random.gen_range(0..list1.len() + 1);
+        let insert = list1.insert_index(index, c, 0);
+        list1.apply(insert.clone());
 
-        site2.apply(insert_op.clone());
-        site2.apply(insert_op.clone());
+        list2.apply(insert.clone());
+        list2.apply(insert.clone());
 
-        let delete_op = site2.delete_index(ix, 1).unwrap();
-        // apply op a coupel of times
-        site2.apply(delete_op.clone());
-        site2.apply(delete_op.clone());
-        // apply op a coupel of times
-        site1.apply(delete_op.clone());
-        site1.apply(delete_op);
+        let delete = list2.delete_index(index, 1).unwrap();
+        list2.apply(delete.clone());
+        list2.apply(delete.clone());
+        list1.apply(delete.clone());
+        list1.apply(delete);
 
-        // now try applying insert op again (even though delete already appled)
-        site1.apply(insert_op.clone());
+        list1.apply(insert.clone());
     }
 
     assert!(
-        site1.is_empty(),
-        "site1 was not empty: {}",
-        String::from_iter(site1)
+        list1.is_empty(),
+        "list1 was not empty: {}",
+        String::from_iter(list1)
     );
     assert!(
-        site2.is_empty(),
-        "site2 was not empty: {}",
-        String::from_iter(site2)
+        list2.is_empty(),
+        "list2 was not empty: {}",
+        String::from_iter(list2)
     );
 
-    assert_eq!(String::from_iter(site2), String::from_iter(site1));
+    assert_eq!(String::from_iter(list2), String::from_iter(list1));
 }
 
 #[test]
 fn test_insert_followed_by_deletes() {
-    let mut rng = rand::thread_rng();
+    let mut random = rand::thread_rng();
 
-    let s1 = rng.clone().sample_iter(Alphanumeric).map(char::from);
+    let s1 = random.clone().sample_iter(Alphanumeric).map(char::from);
 
-    let mut site1 = List::new();
-    let mut site2 = List::new();
+    let mut list1 = List::new();
+    let mut list2 = List::new();
 
     for c in s1.take(5000) {
-        let ix = rng.gen_range(0..site1.len() + 1);
-        let insert_op = site1.insert_index(ix, c, 0);
-        site1.apply(insert_op.clone());
-        site2.apply(insert_op);
+        let index = random.gen_range(0..list1.len() + 1);
+        let insert = list1.insert_index(index, c, 0);
+        list1.apply(insert.clone());
+        list2.apply(insert);
 
-        let delete_op = site2.delete_index(ix, 1).unwrap();
-        site2.apply(delete_op.clone());
-        site1.apply(delete_op);
+        let delete = list2.delete_index(index, 1).unwrap();
+        list2.apply(delete.clone());
+        list1.apply(delete);
     }
 
     assert!(
-        site1.is_empty(),
-        "site1 was not empty: {}",
-        String::from_iter(site1)
+        list1.is_empty(),
+        "list1 was not empty: {}",
+        String::from_iter(list1)
     );
     assert!(
-        site2.is_empty(),
-        "site2 was not empty: {}",
-        String::from_iter(site2)
+        list2.is_empty(),
+        "list2 was not empty: {}",
+        String::from_iter(list2)
     );
 }
 
 #[test]
-fn test_mutual_insert_qc1() {
-    let mut site0 = List::new();
-    let mut site1 = List::new();
+fn test_mutual_insert() {
+    let mut list1 = List::new();
+    let mut list2 = List::new();
     let plan = vec![
-        (8, 24, false),
-        (23, 1, true),
-        (93, 94, false),
-        (68, 30, false),
-        (37, 27, true),
+        (4, 42, false),
+        (22, 5, true),
+        (1, 44, false),
+        (23, 88, false),
+        (99, 3, true),
     ];
 
-    for (elem, idx, source_is_site0) in plan {
-        let ((source, source_actor), replica) = if source_is_site0 {
-            ((&mut site0, 0), &mut site1)
+    for (e, i, s) in plan {
+        let ((source, source_actor), replica) = if s {
+            ((&mut list1, 0), &mut list2)
         } else {
-            ((&mut site1, 1), &mut site0)
+            ((&mut list2, 1), &mut list1)
         };
-        let i = idx % (source.len() + 1);
-        println!("{:?} inserting {} @ {}", source_actor, elem, i);
-        let op = source.insert_index(i, elem, source_actor);
+        let i = i % (source.len() + 1);
+        println!("{:?} inserting {} @ {}", source_actor, e, i);
+        let op = source.insert_index(i, e, source_actor);
         source.apply(op.clone());
         replica.apply(op);
     }
 
-    assert_eq!(Vec::from_iter(site0), Vec::from_iter(site1));
+    assert_eq!(Vec::from_iter(list1), Vec::from_iter(list2));
 }
 
 #[test]
 fn test_deep_inserts() {
-    let mut site = List::new();
-
+    let mut list = List::new();
     let mut vec = Vec::new();
     let n = 1000;
     for v in 0..n {
-        let i = site.len() / 2;
-        println!("inserting {}/{}", i, site.len());
+        let i = list.len() / 2;
+        println!("inserting {}/{}", i, list.len());
         vec.insert(i, v);
-        let op = site.insert_index(i, v, 0);
-        site.apply(op);
+        let op = list.insert_index(i, v, 0);
+        list.apply(op);
     }
-    assert_eq!(site.len(), n);
-    assert_eq!(Vec::from_iter(site), vec);
+    assert_eq!(list.len(), n);
+    assert_eq!(Vec::from_iter(list), vec);
 }

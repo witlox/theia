@@ -3,14 +3,13 @@ use core::iter::FromIterator;
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
-use crate::crdt::identifier::Identifier;
 use crate::crdt::serde_ext::SerDe;
-use crate::crdt::{CmRDT, VectorClock, Version, VersionRange};
+use crate::crdt::{Identifier, CmRDT, VectorClock, Version, VersionRange};
 use crate::crdt::version::OrderedVersion;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct List<T: SerDe, A: Ord> {
-    #[serde(with = "serde_helper::btreemap_as_vec")]
+    #[serde(with="crate::crdt::serde_ext::btreemap_to_vec")]
     sequence: BTreeMap<Identifier<OrderedVersion<A>>, T>,
     clock: VectorClock<A>,
 }
@@ -64,13 +63,12 @@ impl<T: SerDe, A: Ord + Clone> List<T, A> {
                 (indices.next(), indices.next())
             }
             None => {
-                // Inserting at the front of the list
                 let mut indices = self.sequence.keys();
                 (None, indices.next())
             }
         };
 
-        let version = self.clock.inc(actor);
+        let version = self.clock.increment(actor);
         let id = Identifier::between(prev, next, version.into());
         Operation::Insert { id, value: element }
     }
@@ -129,7 +127,6 @@ impl<T: SerDe, A: Ord + Clone> List<T, A> {
         self.sequence.values()
     }
 
-    /// Get each elements identifier and value from the List.
     pub fn iter_entries(&self) -> impl Iterator<Item = (&Identifier<OrderedVersion<A>>, &T)> {
         self.sequence.iter()
     }
@@ -177,8 +174,8 @@ impl<T: SerDe, A: Ord + Clone + fmt::Debug> CmRDT for List<T, A> {
     type Operation = Operation<T, A>;
     type Validation = VersionRange<A>;
 
-    fn validate_operation(&self, op: &Self::Operation) -> Result<(), Self::Validation> {
-        self.clock.validate_op(&op.dot())
+    fn validate(&self, operation: &Self::Operation) -> Result<(), Self::Validation> {
+        self.clock.validate(&operation.version())
     }
 
     fn apply(&mut self, operation: Self::Operation) {

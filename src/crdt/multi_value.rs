@@ -128,7 +128,7 @@ impl<V, A: Ord> CmRDT for MultiValue<V, A> {
     type Operation = Operation<V, A>;
     type Validation = Infallible;
 
-    fn validate_operation(&self, _operation: &Self::Operation) -> Result<(), Self::Validation> {
+    fn validate(&self, _operation: &Self::Operation) -> Result<(), Self::Validation> {
         Ok(())
     }
 

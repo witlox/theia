@@ -125,19 +125,19 @@ impl<K: Ord, V: Val<A> + Debug, A: Ord + Hash + Clone + Debug> CmRDT for Map<K, 
     type Operation = Operation<K, V, A>;
     type Validation = CmRDTValidation<V, A>;
 
-    fn validate_operation(&self, op: &Self::Operation) -> Result<(), Self::Validation> {
+    fn validate(&self, op: &Self::Operation) -> Result<(), Self::Validation> {
         match op {
             Operation::Remove { .. } => Ok(()),
             Operation::Update { version: v, key, operation: op } => {
                 self.clock
-                    .validate_operation(v)
+                    .validate(v)
                     .map_err(CmRDTValidation::SourceOrder)?;
                 let entry = self.entries.get(key).cloned().unwrap_or_default();
                 entry
                     .clock
-                    .validate_operation(v)
+                    .validate(v)
                     .map_err(CmRDTValidation::SourceOrder)?;
-                entry.value.validate_operation(op).map_err(CmRDTValidation::Value)
+                entry.value.validate(op).map_err(CmRDTValidation::Value)
             }
         }
     }

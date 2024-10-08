@@ -3,7 +3,7 @@ use serde::{de::DeserializeOwned, Serialize};
 pub trait SerDe: Serialize + DeserializeOwned {}
 impl<T: Serialize + DeserializeOwned> SerDe for T {}
 
-pub(crate) mod btreemap_as_vec {
+pub(crate) mod btreemap_to_vec {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
     use std::collections::BTreeMap;
 

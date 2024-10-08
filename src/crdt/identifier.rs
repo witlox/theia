@@ -15,7 +15,7 @@ fn rational_between(low: Option<&BigRational>, high: Option<&BigRational>) -> Bi
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(transparent)]
-pub struct Identifier<T>(Vec<(BigRational, T)>);
+pub struct Identifier<T>(pub Vec<(BigRational, T)>);
 
 impl<T: Ord> PartialOrd for Identifier<T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {

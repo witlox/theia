@@ -1,3 +1,4 @@
+use std::hash::Hash;
 use serde::{Serialize, Deserialize};
 use crate::crdt::{List, CmRDT};
 
@@ -218,9 +219,9 @@ impl Storage {
 #[allow(unused)]
 pub struct DataCentre {
     pub name: String,
-    pub compute: List<Compute, str>,
-    pub storage: List<Storage, str>,
-    pub interconnects: List<InterConnect, str>,
+    pub compute: List<Compute, u64>,
+    pub storage: List<Storage, u64>,
+    pub interconnects: List<InterConnect, u64>,
 }
 
 impl DataCentre {
@@ -237,81 +238,86 @@ impl DataCentre {
     }
 
     pub fn add_compute(&mut self, c: Compute) {
-        let r = c.name.clone();
-        self.compute.apply(self.compute.append(c, **r.as_str()));
+        let r = self.compute.len() + 1;
+        self.compute.apply(self.compute.append(c, r as u64));
     }
 
     pub fn add_storage(&mut self, s: Storage) {
-        let r = s.name.clone();
-        self.storage.apply(self.storage.append(s, **r.as_str()));
+        let r = self.compute.len() + 1;
+        self.storage.apply(self.storage.append(s, r as u64));
     }
 
     pub fn add_interconnect(&mut self, i: InterConnect) {
-        let r = i.name.clone();
-        self.interconnects.apply(self.interconnects.append(i, **r.as_str()));
+        let r = self.compute.len() + 1;
+        self.interconnects.apply(self.interconnects.append(i, r as u64));
     }
 
     pub(crate) fn get_compute(&self, name: &str) -> Option<&Compute> {
-        let compute = self.compute.pos(name);
-        let compute = self.compute.get(name);
-        if compute.value.is_none() {
-            return None;
+        for c in self.compute.iter() {
+            if c.name == name {
+                return Some(&c);
+            }
         }
-        Some(&compute.value.unwrap())
+        None
     }
 
     pub(crate) fn get_storage(&self, name: &str) -> Option<&Storage> {
-        let storage = self.storage.get(name);
-        if storage.value.is_none() {
-            return None;
+        for s in self.storage.iter() {
+            if s.name == name {
+                return Some(&s);
+            }
         }
-        Some(&storage.value.unwrap())
+        None
     }
 
     pub(crate) fn get_interconnect(&self, name: &str) -> Option<&InterConnect> {
-        let interconnect = self.interconnects.get(name);
-        if interconnect.value.is_none() {
-            return None;
-        }
-        Some(&interconnect.value.unwrap())
-    }
-
-    pub(crate) fn update_compute(&mut self, c: Compute) {
-        let compute = self.compute.get(&c.name);
-            self.compute.get(&c.name).derive_add(c);
-
-        self.compute.apply(self.compute.update(&c.name, c, |map, x| {
-            map.update(2, x, |mv, x| mv.write(2, x))
-        }));
-    }
-
-    pub(crate) fn update_storage(&mut self, s: Storage) {
-        for i in 0..self.storage.len() {
-            if self.storage[i].name == s.name {
-                self.storage[i] = s;
-                return;
+        for i in self.interconnects.iter() {
+            if i.name == name {
+                return Some(&i);
             }
         }
-    }
-
-    pub(crate) fn update_interconnect(&mut self, i: InterConnect) {
-        for j in 0..self.interconnects.len() {
-            if self.interconnects[j].name == i.name {
-                self.interconnects[j] = i;
-                return;
-            }
-        }
+        None
     }
 
     pub(crate) fn remove_compute(&mut self, name: &str) {
-        self.compute.retain(|c| c.name != name);
+        fn find_index(list: &List<Compute, u64>, name: &str) -> Option<usize> {
+            for (i, c) in list.iter().enumerate() {
+                if c.name == name {
+                    Some(i);
+                }
+            }
+            None
+        }
+        if let Some(i) = find_index(&self.compute, name) {
+            self.compute.apply(self.compute.delete_index(i, i as u64).unwrap());
+        }
     }
 
     pub(crate) fn remove_storage(&mut self, name: &str) {
-        self.storage.retain(|s| s.name != name);
+        fn find_index(list: &List<Storage, u64>, name: &str) -> Option<usize> {
+            for (i, s) in list.iter().enumerate() {
+                if s.name == name {
+                    Some(i);
+                }
+            }
+            None
+        }
+        if let Some(i) = find_index(&self.storage, name) {
+            self.storage.apply(self.storage.delete_index(i, i as u64).unwrap());
+        }
     }
 
     pub(crate) fn remove_interconnect(&mut self, name: &str) {
-        self.interconnects.retain(|i| i.name != name);
+        fn find_index(list: &List<InterConnect, u64>, name: &str) -> Option<usize> {
+            for (i, s) in list.iter().enumerate() {
+                if s.name == name {
+                    Some(i);
+                }
+            }
+            None
+        }
+        if let Some(i) = find_index(&self.interconnects, name) {
+            self.interconnects.apply(self.interconnects.delete_index(i, i as u64).unwrap());
+        }
     }
 }
