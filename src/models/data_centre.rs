@@ -1,8 +1,7 @@
-use std::hash::Hash;
 use serde::{Serialize, Deserialize};
 use crate::crdt::{List, CmRDT};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[allow(unused)]
 pub enum GPUBusType {
     PCIe,
@@ -14,7 +13,7 @@ pub enum GPUBusType {
 ///
 /// GPU data structure
 ///
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[allow(unused)]
 pub struct GPU {
     pub name: String,
@@ -22,6 +21,7 @@ pub struct GPU {
     pub ram_gb: i32,
     pub bus_type: GPUBusType,
 }
+
 
 impl GPU {
     /// GPU instance
@@ -44,7 +44,7 @@ impl GPU {
 ///
 /// Network connections
 ///
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[allow(unused)]
 pub struct InterConnect {
     pub name: String,
@@ -80,7 +80,7 @@ impl InterConnect {
 ///
 /// Disk Types
 ///
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[allow(unused)]
 pub enum DiskType {
     Spinning,
@@ -102,7 +102,7 @@ impl DiskType {
 ///
 /// Disks
 ///
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[allow(unused)]
 pub struct Disk {
     pub name: String,
@@ -137,7 +137,7 @@ impl Disk {
 ///
 /// Main data structure for storing and retrieving compute resources
 ///
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[allow(unused)]
 pub struct Compute {
     pub name: String,
@@ -184,7 +184,7 @@ impl Compute {
 ///
 /// Storage, where capacity is either given, or the sum of all disks
 ///
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[allow(unused)]
 pub struct Storage {
     pub name: String,
@@ -215,13 +215,19 @@ impl Storage {
 ///
 /// A full DC
 ///
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[allow(unused)]
 pub struct DataCentre {
     pub name: String,
     pub compute: List<Compute, u64>,
     pub storage: List<Storage, u64>,
     pub interconnects: List<InterConnect, u64>,
+}
+
+impl PartialEq for DataCentre {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
 }
 
 impl DataCentre {
@@ -252,34 +258,48 @@ impl DataCentre {
         self.interconnects.apply(self.interconnects.append(i, r as u64));
     }
 
-    pub(crate) fn get_compute(&self, name: &str) -> Option<&Compute> {
+
+    /// Get a compute resource by name
+    ///
+    /// ```rust
+    /// use libtheia::models::data_centre::DataCentre;
+    /// use libtheia::models::data_centre::Compute;
+    ///
+    /// let mut dc = DataCentre::new("test".to_string());
+    /// let mut c = Compute::new("test".to_string(), 1, 1, 1);
+    /// dc.add_compute(c.clone());
+    /// let fc = dc.get_compute("test").unwrap();
+    ///
+    /// assert_eq!(c, fc.clone());
+    /// ```
+    pub fn get_compute(&self, name: &str) -> Option<&Compute> {
         for c in self.compute.iter() {
             if c.name == name {
-                return Some(&c);
+                return Some(c);
             }
         }
         None
     }
 
-    pub(crate) fn get_storage(&self, name: &str) -> Option<&Storage> {
+    pub fn get_storage(&self, name: &str) -> Option<&Storage> {
         for s in self.storage.iter() {
             if s.name == name {
-                return Some(&s);
+                return Some(s);
             }
         }
         None
     }
 
-    pub(crate) fn get_interconnect(&self, name: &str) -> Option<&InterConnect> {
+    pub fn get_interconnect(&self, name: &str) -> Option<&InterConnect> {
         for i in self.interconnects.iter() {
             if i.name == name {
-                return Some(&i);
+                return Some(i);
             }
         }
         None
     }
 
-    pub(crate) fn remove_compute(&mut self, name: &str) {
+    pub fn remove_compute(&mut self, name: &str) {
         fn find_index(list: &List<Compute, u64>, name: &str) -> Option<usize> {
             for (i, c) in list.iter().enumerate() {
                 if c.name == name {
@@ -293,7 +313,7 @@ impl DataCentre {
         }
     }
 
-    pub(crate) fn remove_storage(&mut self, name: &str) {
+    pub fn remove_storage(&mut self, name: &str) {
         fn find_index(list: &List<Storage, u64>, name: &str) -> Option<usize> {
             for (i, s) in list.iter().enumerate() {
                 if s.name == name {
@@ -307,7 +327,7 @@ impl DataCentre {
         }
     }
 
-    pub(crate) fn remove_interconnect(&mut self, name: &str) {
+    pub fn remove_interconnect(&mut self, name: &str) {
         fn find_index(list: &List<InterConnect, u64>, name: &str) -> Option<usize> {
             for (i, s) in list.iter().enumerate() {
                 if s.name == name {

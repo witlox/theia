@@ -1,5 +1,6 @@
-pub mod dc;
+pub mod data_centre;
 pub(crate) mod resource;
+pub mod infrastructure;
 
 
 pub struct RedisInstance {

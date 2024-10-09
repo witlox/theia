@@ -5,7 +5,7 @@ pub mod vector_clock;
 pub use vector_clock::VectorClock;
 
 pub mod traits;
-pub use traits::{Actor, CvRDT, CmRDT, ResetRemove};
+pub use traits::{Actor, CvRDT, CmRDT, Reset};
 
 pub mod version;
 pub use version::{Version, VersionRange};

@@ -1,4 +1,4 @@
-use libtheia::models::dc::{Compute, DataCentre, Disk, DiskType, GPUBusType, InterConnect, Storage, GPU};
+use libtheia::models::data_centre::{Compute, DataCentre, Disk, DiskType, GPUBusType, InterConnect, Storage, GPU};
 
 extern crate redis;
 use redis::Commands;

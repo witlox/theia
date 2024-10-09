@@ -1,5 +1,5 @@
 use std::fmt::Debug;
-use libtheia::crdt::{ResetRemove, Version, CvRDT, CmRDT, VectorClock};
+use libtheia::crdt::{Reset, Version, CvRDT, CmRDT, VectorClock};
 
 #[test]
 fn test_reset_remove() {
@@ -11,7 +11,7 @@ fn test_reset_remove() {
         .collect();
     let expected: VectorClock<u8> = vec![Version::new(5, 9)].into_iter().collect();
 
-    a.reset_remove(&b);
+    a.reset(&b);
     assert_eq!(a, expected);
 }
 

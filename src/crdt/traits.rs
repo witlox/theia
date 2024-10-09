@@ -19,12 +19,12 @@ pub trait CmRDT {
 
     type Validation: Error;
 
-    fn validate(&self, op: &Self::Operation) -> Result<(), Self::Validation>;
+    fn validate_apply(&self, op: &Self::Operation) -> Result<(), Self::Validation>;
 
     fn apply(&mut self, op: Self::Operation);
 }
 
 
-pub trait ResetRemove<A: Ord> {
-    fn reset_remove(&mut self, clock: &VectorClock<A>);
+pub trait Reset<A: Ord> {
+    fn reset(&mut self, clock: &VectorClock<A>);
 }

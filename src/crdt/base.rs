@@ -9,7 +9,7 @@ use crate::crdt::traits::CmRDT;
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Read<V, A: Ord> {
     pub add_clock: VectorClock<A>,
-    pub rm_clock: VectorClock<A>,
+    pub remove_clock: VectorClock<A>,
     pub value: V,
 }
 
@@ -34,7 +34,7 @@ impl<V, A: Ord + Clone + Debug> Read<V, A> {
 
     pub fn derive_remove(self) -> Remove<A> {
         Remove {
-            clock: self.rm_clock,
+            clock: self.remove_clock,
         }
     }
 
@@ -43,7 +43,7 @@ impl<V, A: Ord + Clone + Debug> Read<V, A> {
             self.value,
             Read {
                 add_clock: self.add_clock,
-                rm_clock: self.rm_clock,
+                remove_clock: self.remove_clock,
                 value: (),
             },
         )

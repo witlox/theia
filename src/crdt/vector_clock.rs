@@ -1,4 +1,5 @@
 //! Module containing Vector Clock implementation.
+//! https://en.wikipedia.org/wiki/Vector_clock
 //!
 //! ``` rust
 //! use libtheia::crdt::CmRDT;
@@ -7,8 +8,8 @@
 //!
 //! let mut a = VectorClock::new();
 //! let mut b = VectorClock::new();
-//! a.apply(Version::new("A", 2));
-//! b.apply(Version::new("A", 1));
+//! a.apply(Version::new("a", 2));
+//! b.apply(Version::new("a", 1));
 //! assert!(a > b);
 //! ```
 
@@ -19,7 +20,7 @@ use core::mem;
 use std::collections::{btree_map, BTreeMap};
 
 use serde::{Deserialize, Serialize};
-use crate::crdt::{Version, VersionRange, CmRDT, CvRDT, ResetRemove };
+use crate::crdt::{Version, VersionRange, CmRDT, CvRDT, Reset};
 
 /// It contains a set of "actors" and associated counters.
 /// When a particular actor witnesses a mutation, their associated
@@ -65,8 +66,8 @@ impl<A: Ord + Display> Display for VectorClock<A> {
     }
 }
 
-impl<A: Ord> ResetRemove<A> for VectorClock<A> {
-    fn reset_remove(&mut self, other: &Self) {
+impl<A: Ord> Reset<A> for VectorClock<A> {
+    fn reset(&mut self, other: &Self) {
         for Version { actor, counter } in other.iterator() {
             if counter >= self.get(actor) {
                 self.versions.remove(actor);
@@ -79,7 +80,7 @@ impl<A: Ord + Clone + Debug> CmRDT for VectorClock<A> {
     type Operation = Version<A>;
     type Validation = VersionRange<A>;
 
-    fn validate(&self, version: &Self::Operation) -> Result<(), Self::Validation> {
+    fn validate_apply(&self, version: &Self::Operation) -> Result<(), Self::Validation> {
         let next_counter = self.get(&version.actor) + 1;
         if version.counter > next_counter {
             Err(VersionRange {
@@ -100,12 +101,11 @@ impl<A: Ord + Clone + Debug> CmRDT for VectorClock<A> {
     ///
     /// let mut v = VectorClock::new();
     ///
-    /// v.apply(Version::new("A", 2));
+    /// v.apply(Version::new("a", 1));
     ///
-    /// // now all versions applied to `v` from actor `A` where
-    /// // the counter is not bigger than 2 are nops.
-    /// v.apply(Version::new("A", 0));
-    /// assert_eq!(v.get(&"A"), 2);
+    /// v.apply(Version::new("a", 0));
+    ///
+    /// assert_eq!(v.get(&"a"), 1);
     /// ```
     fn apply(&mut self, version: Self::Operation) {
         if self.get(&version.actor) < version.counter {
@@ -133,9 +133,9 @@ impl<A: Ord> VectorClock<A> {
         Default::default()
     }
 
-    pub fn clone_without(&self, base_clock: &VectorClock<A>) -> VectorClock<A> where A: Clone {
+    pub fn clone_reset(&self, base_clock: &VectorClock<A>) -> VectorClock<A> where A: Clone {
         let mut cloned = self.clone();
-        cloned.reset_remove(base_clock);
+        cloned.reset(base_clock);
         cloned
     }
 
@@ -147,20 +147,15 @@ impl<A: Ord> VectorClock<A> {
     ///
     /// let mut a = VectorClock::new();
     ///
-    /// // `a.inc()` does not mutate the vclock!
-    /// let op = a.increment("A");
+    /// let op = a.increment("a");
     /// assert_eq!(a, VectorClock::new());
     ///
-    /// // we must apply the op to the VClock to have
-    /// // its edit take effect.
     /// a.apply(op.clone());
-    /// assert_eq!(a.get(&"A"), 1);
+    /// assert_eq!(a.get(&"a"), 1);
     ///
-    /// // Op's can be replicated to another node and
-    /// // applied to the local state there.
     /// let mut other_node = VectorClock::new();
     /// other_node.apply(op);
-    /// assert_eq!(other_node.get(&"A"), 1);
+    /// assert_eq!(other_node.get(&"a"), 1);
     /// ```
     pub fn increment(&self, actor: A) -> Version<A> where A: Clone {
         self.version(actor).inc()
@@ -182,8 +177,8 @@ impl<A: Ord> VectorClock<A> {
     /// use libtheia::crdt::VectorClock;
     ///
     /// let (mut a, mut b) = (VectorClock::new(), VectorClock::new());
-    /// a.apply(a.increment("A"));
-    /// b.apply(b.increment("B"));
+    /// a.apply(a.increment("a"));
+    /// b.apply(b.increment("b"));
     /// assert!(a.concurrent(&b));
     /// ```
     pub fn concurrent(&self, other: &VectorClock<A>) -> bool {
@@ -250,7 +245,7 @@ pub struct IntoIter<A: Ord> {
     btree_iter: btree_map::IntoIter<A, u64>,
 }
 
-impl<A: Ord> std::iter::Iterator for IntoIter<A> {
+impl<A: Ord> Iterator for IntoIter<A> {
     type Item = Version<A>;
 
     fn next(&mut self) -> Option<Version<A>> {
@@ -260,7 +255,7 @@ impl<A: Ord> std::iter::Iterator for IntoIter<A> {
     }
 }
 
-impl<A: Ord> std::iter::IntoIterator for VectorClock<A> {
+impl<A: Ord> IntoIterator for VectorClock<A> {
     type Item = Version<A>;
     type IntoIter = IntoIter<A>;
 
@@ -271,7 +266,7 @@ impl<A: Ord> std::iter::IntoIterator for VectorClock<A> {
     }
 }
 
-impl<A: Ord + Clone + Debug> std::iter::FromIterator<Version<A>> for VectorClock<A> {
+impl<A: Ord + Clone + Debug> FromIterator<Version<A>> for VectorClock<A> {
     fn from_iter<I: IntoIterator<Item = Version<A>>>(iter: I) -> Self {
         let mut clock = VectorClock::default();
 

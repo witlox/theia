@@ -1,4 +1,4 @@
-use crate::models::dc::{Compute, Storage, InterConnect};
+use crate::models::data_centre::{Compute, Storage, InterConnect};
 use chrono::NaiveDate;
 
 ///

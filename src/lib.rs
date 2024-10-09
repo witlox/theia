@@ -11,7 +11,7 @@ use settings::Settings;
 pub mod crdt;
 
 pub mod models;
-use models::dc::DataCentre;
+use models::data_centre::DataCentre;
 
 use redis;
 use redis::Commands;

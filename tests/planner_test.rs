@@ -1,5 +1,5 @@
 use redis::{Commands, RedisError};
-use libtheia::models::dc::{Compute, DataCentre, InterConnect};
+use libtheia::models::data_centre::{Compute, DataCentre, InterConnect};
 // use crate::common::{setup, teardown};
 
 mod common;

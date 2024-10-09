@@ -7,11 +7,11 @@ use std::mem;
 
 use serde::{Deserialize, Serialize};
 use crate::crdt::base::{Add, Read, Remove};
-use crate::crdt::{CmRDT, CvRDT, ResetRemove, VectorClock, Version, VersionRange};
+use crate::crdt::{CmRDT, CvRDT, Reset, VectorClock, Version, VersionRange};
 
-pub trait Val<A: Ord>: Clone + Default + ResetRemove<A> + CmRDT {}
+pub trait Val<A: Ord>: Clone + Default + Reset<A> + CmRDT {}
 
-impl<A, T> Val<A> for T where A: Ord, T: Clone + Default + ResetRemove<A> + CmRDT {}
+impl<A, T> Val<A> for T where A: Ord, T: Clone + Default + Reset<A> + CmRDT {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Map<K: Ord, V: Val<A>, A: Ord + Hash> {
@@ -58,13 +58,13 @@ impl<K: Ord, V: Val<A>, A: Ord + Hash> Default for Map<K, V, A> {
     }
 }
 
-impl<K: Ord, V: Val<A>, A: Ord + Hash> ResetRemove<A> for Map<K, V, A> {
-    fn reset_remove(&mut self, clock: &VectorClock<A>) {
+impl<K: Ord, V: Val<A>, A: Ord + Hash> Reset<A> for Map<K, V, A> {
+    fn reset(&mut self, clock: &VectorClock<A>) {
         self.entries = mem::take(&mut self.entries)
             .into_iter()
             .filter_map(|(key, mut entry)| {
-                entry.clock.reset_remove(clock);
-                entry.value.reset_remove(clock);
+                entry.clock.reset(clock);
+                entry.value.reset(clock);
                 if entry.clock.is_empty() {
                     None
                 } else {
@@ -76,7 +76,7 @@ impl<K: Ord, V: Val<A>, A: Ord + Hash> ResetRemove<A> for Map<K, V, A> {
         self.deferred = mem::take(&mut self.deferred)
             .into_iter()
             .filter_map(|(mut rm_clock, key)| {
-                rm_clock.reset_remove(clock);
+                rm_clock.reset(clock);
                 if rm_clock.is_empty() {
                     None
                 } else {
@@ -85,7 +85,7 @@ impl<K: Ord, V: Val<A>, A: Ord + Hash> ResetRemove<A> for Map<K, V, A> {
             })
             .collect();
 
-        self.clock.reset_remove(clock);
+        self.clock.reset(clock);
     }
 }
 
@@ -125,33 +125,33 @@ impl<K: Ord, V: Val<A> + Debug, A: Ord + Hash + Clone + Debug> CmRDT for Map<K, 
     type Operation = Operation<K, V, A>;
     type Validation = CmRDTValidation<V, A>;
 
-    fn validate(&self, op: &Self::Operation) -> Result<(), Self::Validation> {
+    fn validate_apply(&self, op: &Self::Operation) -> Result<(), Self::Validation> {
         match op {
             Operation::Remove { .. } => Ok(()),
-            Operation::Update { version: v, key, operation: op } => {
+            Operation::Update { version: v, key, operation: o } => {
                 self.clock
-                    .validate(v)
+                    .validate_apply(v)
                     .map_err(CmRDTValidation::SourceOrder)?;
                 let entry = self.entries.get(key).cloned().unwrap_or_default();
                 entry
                     .clock
-                    .validate(v)
+                    .validate_apply(v)
                     .map_err(CmRDTValidation::SourceOrder)?;
-                entry.value.validate(op).map_err(CmRDTValidation::Value)
+                entry.value.validate_apply(o).map_err(CmRDTValidation::Value)
             }
         }
     }
 
     fn apply(&mut self, operation: Self::Operation) {
         match operation {
-            Operation::Remove { clock, key_set: key_set } => self.apply_key_set_remove(key_set, clock),
-            Operation::Update { version: v, key, operation: op } => {
+            Operation::Remove { clock, key_set } => self.apply_key_set_remove(key_set, clock),
+            Operation::Update { version: v, key, operation: o } => {
                 if self.clock.get(&v.actor) >= v.counter {
                     return;
                 }
                 let entry = self.entries.entry(key).or_default();
                 entry.clock.apply(v.clone());
-                entry.value.apply(op);
+                entry.value.apply(o);
                 self.clock.apply(v);
                 self.apply_deferred();
             }
@@ -195,10 +195,10 @@ impl<K: Ord + Clone + Debug, V: Val<A> + CvRDT + Debug, A: Ord + Hash + Clone + 
                     if other.clock >= entry.clock {
                         None
                     } else {
-                        entry.clock.reset_remove(&other.clock);
+                        entry.clock.reset(&other.clock);
                         let mut removed_information = other.clock.clone();
-                        removed_information.reset_remove(&entry.clock);
-                        entry.value.reset_remove(&removed_information);
+                        removed_information.reset(&entry.clock);
+                        entry.value.reset(&removed_information);
                         Some((key, entry))
                     }
                 } else {
@@ -210,8 +210,8 @@ impl<K: Ord + Clone + Debug, V: Val<A> + CvRDT + Debug, A: Ord + Hash + Clone + 
         for (key, mut entry) in other.entries {
             if let Some(our_entry) = self.entries.get_mut(&key) {
                 let mut common = VectorClock::intersection(&entry.clock, &our_entry.clock);
-                common.merge(entry.clock.clone_without(&self.clock));
-                common.merge(our_entry.clock.clone_without(&other.clock));
+                common.merge(entry.clock.clone_reset(&self.clock));
+                common.merge(our_entry.clock.clone_reset(&other.clock));
                 if common.is_empty() {
                     self.entries.remove(&key).unwrap();
                 } else {
@@ -219,18 +219,18 @@ impl<K: Ord + Clone + Debug, V: Val<A> + CvRDT + Debug, A: Ord + Hash + Clone + 
 
                     let mut information_that_was_deleted = entry.clock.clone();
                     information_that_was_deleted.merge(our_entry.clock.clone());
-                    information_that_was_deleted.reset_remove(&common);
-                    our_entry.value.reset_remove(&information_that_was_deleted);
+                    information_that_was_deleted.reset(&common);
+                    our_entry.value.reset(&information_that_was_deleted);
                     our_entry.clock = common;
                 }
             } else {
                 if self.clock >= entry.clock {
                 } else {
-                    entry.clock.reset_remove(&self.clock);
+                    entry.clock.reset(&self.clock);
 
                     let mut information_we_deleted = self.clock.clone();
-                    information_we_deleted.reset_remove(&entry.clock);
-                    entry.value.reset_remove(&information_we_deleted);
+                    information_we_deleted.reset(&entry.clock);
+                    entry.value.reset(&information_we_deleted);
                     self.entries.insert(key, entry);
                 }
             }
@@ -254,7 +254,7 @@ impl<K: Ord, V: Val<A>, A: Ord + Hash + Clone> Map<K, V, A> {
     pub fn is_empty(&self) -> Read<bool, A> {
         Read {
             add_clock: self.clock.clone(),
-            rm_clock: self.clock.clone(),
+            remove_clock: self.clock.clone(),
             value: self.entries.is_empty(),
         }
     }
@@ -262,7 +262,7 @@ impl<K: Ord, V: Val<A>, A: Ord + Hash + Clone> Map<K, V, A> {
     pub fn len(&self) -> Read<usize, A> {
         Read {
             add_clock: self.clock.clone(),
-            rm_clock: self.clock.clone(),
+            remove_clock: self.clock.clone(),
             value: self.entries.len(),
         }
     }
@@ -272,7 +272,7 @@ impl<K: Ord, V: Val<A>, A: Ord + Hash + Clone> Map<K, V, A> {
         let entry_opt = self.entries.get(key);
         Read {
             add_clock,
-            rm_clock: entry_opt
+            remove_clock: entry_opt
                 .map(|map_entry| map_entry.clock.clone())
                 .unwrap_or_default(),
             value: entry_opt.map(|map_entry| map_entry.value.clone()),
@@ -303,7 +303,7 @@ impl<K: Ord, V: Val<A>, A: Ord + Hash + Clone> Map<K, V, A> {
     pub fn read(&self) -> Read<(), A> {
         Read {
             add_clock: self.clock.clone(),
-            rm_clock: self.clock.clone(),
+            remove_clock: self.clock.clone(),
             value: (),
         }
     }
@@ -318,11 +318,11 @@ impl<K: Ord, V: Val<A>, A: Ord + Hash + Clone> Map<K, V, A> {
     fn apply_key_set_remove(&mut self, mut keyset: BTreeSet<K>, clock: VectorClock<A>) {
         for key in keyset.iter() {
             if let Some(entry) = self.entries.get_mut(key) {
-                entry.clock.reset_remove(&clock);
+                entry.clock.reset(&clock);
                 if entry.clock.is_empty() {
                     self.entries.remove(key);
                 } else {
-                    entry.value.reset_remove(&clock);
+                    entry.value.reset(&clock);
                 }
             }
         }
@@ -339,7 +339,7 @@ impl<K: Ord, V: Val<A>, A: Ord + Hash + Clone> Map<K, V, A> {
     pub fn keys(&self) -> impl Iterator<Item = Read<&K, A>> {
         self.entries.iter().map(move |(k, v)| Read {
             add_clock: self.clock.clone(),
-            rm_clock: v.clock.clone(),
+            remove_clock: v.clock.clone(),
             value: k,
         })
     }
@@ -347,7 +347,7 @@ impl<K: Ord, V: Val<A>, A: Ord + Hash + Clone> Map<K, V, A> {
     pub fn values(&self) -> impl Iterator<Item = Read<&V, A>> {
         self.entries.values().map(move |v| Read {
             add_clock: self.clock.clone(),
-            rm_clock: v.clock.clone(),
+            remove_clock: v.clock.clone(),
             value: &v.value,
         })
     }
@@ -387,7 +387,7 @@ impl<K: Ord, V: Val<A>, A: Ord + Hash + Clone> Map<K, V, A> {
     pub fn iterator(&self) -> impl Iterator<Item = Read<(&K, &V), A>> {
         self.entries.iter().map(move |(k, v)| Read {
             add_clock: self.clock.clone(),
-            rm_clock: v.clock.clone(),
+            remove_clock: v.clock.clone(),
             value: (k, &v.value),
         })
     }

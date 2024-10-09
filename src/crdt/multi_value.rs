@@ -5,7 +5,7 @@ use core::mem;
 
 use serde::{Deserialize, Serialize};
 use crate::crdt::base::{Add, Read};
-use crate::crdt::traits::{CmRDT, CvRDT, ResetRemove};
+use crate::crdt::traits::{CmRDT, CvRDT, Reset};
 use crate::crdt::vector_clock::VectorClock;
 
 /// Multi-Value storage
@@ -19,15 +19,14 @@ use crate::crdt::vector_clock::VectorClock;
 /// let r1_read_ctx = r1.read();
 /// let r2_read_ctx = r2.read();
 ///
-/// r1.apply(r1.write("bob", r1_read_ctx.derive_add(123)));
+/// r1.apply(r1.write("foo", r1_read_ctx.derive_add(123)));
 ///
-/// let op = r2.write("alice", r2_read_ctx.derive_add(111));
+/// let op = r2.write("bar", r2_read_ctx.derive_add(111));
 /// r2.apply(op.clone());
 ///
-/// r1.apply(op); // we replicate op to r1
+/// r1.apply(op);
 ///
-/// // Since "bob" and "alice" were added concurrently, we see both on read
-/// assert_eq!(r1.read().value, vec!["bob", "alice"]);
+/// assert_eq!(r1.read().value, vec!["foo", "bar"]);
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -78,12 +77,12 @@ impl<V: PartialEq, A: Ord> PartialEq for MultiValue<V, A> {
 
 impl<V: Eq, A: Ord> Eq for MultiValue<V, A> {}
 
-impl<V, A: Ord> ResetRemove<A> for MultiValue<V, A> {
-    fn reset_remove(&mut self, clock: &VectorClock<A>) {
+impl<V, A: Ord> Reset<A> for MultiValue<V, A> {
+    fn reset(&mut self, clock: &VectorClock<A>) {
         self.values = mem::take(&mut self.values)
             .into_iter()
             .filter_map(|(mut val_clock, val)| {
-                val_clock.reset_remove(clock);
+                val_clock.reset(clock);
                 if val_clock.is_empty() {
                     None // remove this value from the register
                 } else {
@@ -128,7 +127,7 @@ impl<V, A: Ord> CmRDT for MultiValue<V, A> {
     type Operation = Operation<V, A>;
     type Validation = Infallible;
 
-    fn validate(&self, _operation: &Self::Operation) -> Result<(), Self::Validation> {
+    fn validate_apply(&self, _operation: &Self::Operation) -> Result<(), Self::Validation> {
         Ok(())
     }
 
@@ -176,7 +175,7 @@ impl<V, A: Ord + Clone + Debug> MultiValue<V, A> {
 
         Read {
             add_clock: clock.clone(),
-            rm_clock: clock,
+            remove_clock: clock,
             value: concurrent_vals,
         }
     }
@@ -185,7 +184,7 @@ impl<V, A: Ord + Clone + Debug> MultiValue<V, A> {
         let clock = self.clock();
         Read {
             add_clock: clock.clone(),
-            rm_clock: clock,
+            remove_clock: clock,
             value: (),
         }
     }
